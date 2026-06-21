@@ -1,0 +1,57 @@
+# =========================================================================
+# 1. 全局系统与通用 IDE / 编辑器缓存 (所有项目通用)
+# =========================================================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+.classpath
+.project
+.settings/
+
+# =========================================================================
+# 2. 前端模块 (frontend - Vue / Vite)
+# =========================================================================
+**/frontend/node_modules/
+**/frontend/dist/
+**/frontend/.env.local
+**/frontend/.env.*.local
+
+# =========================================================================
+# 3. 后端模块 (gym-management-system - Java / Maven)
+# =========================================================================
+**/gym-management-system/target/
+**/gym-management-system/out/
+*.class
+*.jar
+*.war
+
+# =========================================================================
+# 4. RAG 模块一 (FITNESS-RAG - Python)
+# =========================================================================
+**/FITNESS-RAG/__pycache__/
+**/FITNESS-RAG/**/__pycache__/
+**/FITNESS-RAG/venv/
+**/FITNESS-RAG/chroma_db/
+**/FITNESS-RAG/.env
+
+# =========================================================================
+# 5. RAG 模块二 (RAG_study - Python / 模型 / 索引)
+# =========================================================================
+**/RAG_study/__pycache__/
+**/RAG_study/**/__pycache__/
+**/RAG_study/venv/
+**/RAG_study/text2vec_model/
+**/RAG_study/my_chroma_db/
+**/RAG_study/memory_data/
+**/RAG_study/my_index.faiss
+**/RAG_study/my_docs.npy
+**/RAG_study/.env
+
+# 全局通配符兜底（防止其他地方漏掉）
+*.pyc
