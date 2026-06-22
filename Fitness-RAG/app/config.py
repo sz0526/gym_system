@@ -1,1 +1,6 @@
-DASHSCOPE_API_KEY = "sk-ws-H.REPYYRY.ICQ8.MEQCID-sKPFo65V8lTraV4sODNbTQzrvwEa0WclMf9glhCtCAiAMkhvscQbqhQee9R4fEi1RHrZ9kVhlP4avpJkkJDt8Gg"
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY")
