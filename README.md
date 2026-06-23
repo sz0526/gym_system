@@ -9,6 +9,10 @@
 - 易于扩展 ：模块化设计，支持新增知识文档
 ### 🛠️ 技术栈
 <img width="276" height="264" alt="image" src="https://github.com/user-attachments/assets/4d6b657d-8b56-4549-94c7-632b90c5428c" />
+
+
+
+
 ### 📁 项目结构
 Fitness-RAG/
 ├── app/                    # 核心应用代码
@@ -30,6 +34,12 @@ Fitness-RAG/
 ├── .env                    # 环境变量配置
 ├── requirements.txt        # 依赖清单
 └── README.md               # 项目说明
+
+
+
+
+
+
 ### 🚀 快速开始
 # 安装依赖
 pip install -r requirements.txt
@@ -40,10 +50,8 @@ echo "DASHSCOPE_API_KEY=your_api_key" > .env
 # 启动服务
 uvicorn app.main:app --reload
 
-# 访问 API
-curl -X POST http://localhost:8000/chat \
-  -H "Content-Type: application/json" \
-  -d '{"question": "怎么练胸肌？"}'
+
+
 ### 📡 API 接口
 <img width="277" height="100" alt="image" src="https://github.com/user-attachments/assets/baa97012-3ce8-4d57-9874-34be530c82cc" />
 
