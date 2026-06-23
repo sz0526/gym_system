@@ -14,26 +14,8 @@
 
 
 ### 📁 项目结构
-Fitness-RAG/
-├── app/                    # 核心应用代码
-│   ├── main.py             # FastAPI 入口
-│   ├── rag.py              # RAG 核心逻辑
-│   ├── retriever.py        # 混合检索器
-│   ├── vector_store.py     # 向量数据库管理
-│   ├── embedding.py        # 向量化模型
-│   ├── llm.py              # LLM 客户端
-│   ├── llm_stream.py       # 流式 LLM 客户端
-│   ├── prompt.py           # Prompt 模板
-│   ├── load_markdown.py    # 文档加载器
-│   ├── split_text.py       # 文本切分工具
-│   └── config.py           # 配置管理
-├── data/                   # 数据目录
-│   ├── fitness_docs/       # 健身知识库文档
-│   └── pdf/                # PDF 文档
-├── chroma_db/              # Chroma 向量数据库存储
-├── .env                    # 环境变量配置
-├── requirements.txt        # 依赖清单
-└── README.md               # 项目说明
+<img width="315" height="291" alt="image" src="https://github.com/user-attachments/assets/2bd195eb-2642-414f-b3c7-0c43bed46841" />
+
 
 
 
