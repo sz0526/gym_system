@@ -65,6 +65,7 @@ public class ChatServiceImpl implements ChatService {
                 conn.setRequestMethod("POST");
                 conn.setDoOutput(true);
                 conn.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
+                conn.setRequestProperty("Accept-Charset", "UTF-8");
 
                 try (OutputStream os = conn.getOutputStream()) {
                     os.write(json.getBytes(StandardCharsets.UTF_8));
@@ -73,13 +74,16 @@ public class ChatServiceImpl implements ChatService {
                 BufferedReader reader = new BufferedReader(
                         new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
 
+                org.springframework.http.MediaType utf8Text =
+                        org.springframework.http.MediaType.parseMediaType("text/plain;charset=UTF-8");
+
                 String line;
                 while ((line = reader.readLine()) != null) {
                     if (line.startsWith("data:")) {
                         line = line.substring(5).trim();
                     }
                     if (!line.isEmpty()) {
-                        emitter.send(SseEmitter.event().data(line));
+                        emitter.send(SseEmitter.event().data(line, utf8Text));
                     }
                 }
                 reader.close();

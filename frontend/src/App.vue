@@ -1,8 +1,16 @@
 <template>
   <RoleLayout v-if="showLayout" :role="layoutRole">
-    <router-view />
+    <router-view v-slot="{ Component, route }">
+      <transition name="fade-slide" mode="out-in">
+        <component :is="Component" :key="route.path" />
+      </transition>
+    </router-view>
   </RoleLayout>
-  <router-view v-else />
+  <router-view v-else v-slot="{ Component, route }">
+    <transition name="fade-slide" mode="out-in">
+      <component :is="Component" :key="route.path" />
+    </transition>
+  </router-view>
 </template>
 
 <script setup lang="ts">
@@ -16,7 +24,7 @@ const showLayout = computed(() => {
   const p = route.path
 
   // 登录入口/登录页不展示侧边栏
-  if (p === '/' || p === '/toAdminMain' || p === '/toUserLogin' || p === '/toUserMain') {
+  if (p === '/' || p === '/toAdminMain' || p === '/toUserLogin' || p === '/toUserRegister' || p === '/toUserMain') {
     // 其中到主页面需要展示侧边栏
     return p === '/toAdminMain' || p === '/toUserMain'
   }

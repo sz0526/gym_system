@@ -48,4 +48,9 @@ public class MemberServiceImpl implements MemberService {
     public List<Member> selectByMemberAccount(Integer memberAccount) {
         return memberMapper.selectByMemberAccount(memberAccount);
     }
+
+    @Override
+    public Boolean registerMember(Member member) {
+        return memberMapper.registerMember(member);
+    }
 }

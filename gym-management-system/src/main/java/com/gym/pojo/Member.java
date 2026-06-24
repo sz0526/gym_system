@@ -8,6 +8,8 @@ public class Member {
     private Integer memberAccount;
     private String memberPassword;
     private String memberName;
+    private String memberUsername;
+    private String memberEmail;
     private String memberGender;
     private Integer memberAge;
     private Integer memberHeight;

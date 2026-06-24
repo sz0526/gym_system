@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.gym.mapper.ChatMessageMapper">
+
+    <insert id="insert">
+
+        insert into chat_message
+        (
+            session_id,
+            role,
+            content
+        )
+        values
+            (
+                #{sessionId},
+                #{role},
+                #{content}
+            )
+
+    </insert>
+
+    <select id="selectLastMessages"
+            resultType="com.gym.pojo.ChatMessage">
+
+        select *
+        from chat_message
+        where session_id = #{sessionId}
+        order by id desc
+            limit #{limit}
+
+    </select>
+
+</mapper>

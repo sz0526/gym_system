@@ -56,4 +56,11 @@
         WHERE member_account = #{memberAccount}
     </select>
 
+    <insert id="registerMember" parameterType="member">
+        INSERT INTO member (member_account, member_name, member_phone, member_password,
+                            card_time, card_class, card_next_class)
+        VALUES (#{memberAccount}, #{memberName}, #{memberPhone}, #{memberPassword},
+                #{cardTime}, #{cardClass}, #{cardNextClass})
+    </insert>
+
 </mapper>

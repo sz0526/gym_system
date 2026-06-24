@@ -37,8 +37,8 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
-import { postForm } from '../api/client'
+import { nextTick, onMounted, ref } from 'vue'
+import axios from 'axios'
 
 type ChatRole = 'user' | 'assistant'
 type ChatMessage = {
@@ -51,6 +51,7 @@ type ChatMessage = {
 const draft = ref('')
 const isSending = ref(false)
 const scrollbarRef = ref<any>(null)
+const ragSessionId = ref('')
 const messages = ref<ChatMessage[]>([
   {
     id: crypto.randomUUID(),
@@ -59,6 +60,18 @@ const messages = ref<ChatMessage[]>([
     createdAt: Date.now()
   }
 ])
+
+// 进入页面时创建 RAG 会话
+onMounted(async () => {
+  try {
+    const res = await axios.post('/api/chat/session/create')
+    if (res.data.success) {
+      ragSessionId.value = res.data.sessionId
+    }
+  } catch (e) {
+    console.error('创建会话失败', e)
+  }
+})
 
 function pushMessage(role: ChatRole, text: string) {
   messages.value.push({
@@ -95,11 +108,22 @@ async function send() {
     createdAt: Date.now()
   })
 
-  const encoded = encodeURIComponent(content)
-  const url = `/api/chat/stream?content=${encoded}`
-  const source = new EventSource(url)
+  await scrollToBottom()
+
+  const memberAccount = localStorage.getItem('memberAccount') ?? ''
+  const params = new URLSearchParams({
+    content,
+    memberAccount,
+    ragSessionId: ragSessionId.value
+  })
+  const source = new EventSource(`/api/chat/stream?${params.toString()}`)
 
   source.onmessage = (event) => {
+    if (event.data === '[DONE]') {
+      source.close()
+      isSending.value = false
+      return
+    }
     const aiMsg = messages.value.find(m => m.id === aiMsgId)
     if (aiMsg) {
       aiMsg.text += event.data

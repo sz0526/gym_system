@@ -11,11 +11,17 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.servlet.http.HttpSession;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api")
@@ -51,10 +57,30 @@ public class ApiLoginController {
     }
 
     @PostMapping("/userLogin")
-    public ResponseEntity<Map<String, Object>> userLogin(Member member, HttpSession session) {
-        Member loggedIn = memberService.userLogin(member);
+    public ResponseEntity<Map<String, Object>> userLogin(
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String password,
+            HttpSession session) {
+        
+        if (username == null || username.isBlank()) {
+            return badRequest("请输入用户名");
+        }
+        if (password == null || password.isBlank()) {
+            return badRequest("请输入密码");
+        }
+        
+        Member loggedIn = null;
+        List<Member> members = memberService.findAll();
+        for (Member m : members) {
+            if (m.getMemberName() != null && m.getMemberName().equals(username) && 
+                m.getMemberPassword() != null && m.getMemberPassword().equals(password)) {
+                loggedIn = m;
+                break;
+            }
+        }
+        
         if (loggedIn == null) {
-            return unauthorized("账号或密码有误");
+            return unauthorized("用户名或密码有误");
         }
         session.setAttribute(SESSION_USER, loggedIn);
         return ResponseEntity.ok(singleSuccess());
@@ -64,6 +90,66 @@ public class ApiLoginController {
     public ResponseEntity<Map<String, Object>> logout(HttpSession session) {
         session.invalidate();
         return ResponseEntity.ok(singleSuccess());
+    }
+
+    @PostMapping("/userRegister")
+    public ResponseEntity<Map<String, Object>> userRegister(
+            @RequestParam(required = false) String memberUsername,
+            @RequestParam(required = false) String memberEmail,
+            @RequestParam(required = false) String memberPassword) {
+        String username = memberUsername;
+        String email = memberEmail;
+        String password = memberPassword;
+
+        if (username == null || username.isBlank()) {
+            return badRequest("用户名不能为空");
+        }
+        if (!Pattern.matches("^[\\u4e00-\\u9fa5a-zA-Z0-9_]{6,20}$", username)) {
+            return badRequest("用户名须为6-20位中文、英文、数字或下划线");
+        }
+        
+        List<Member> existingMembers = memberService.selectByMemberAccount(0);
+        for (Member m : existingMembers) {
+            if (m.getMemberName() != null && m.getMemberName().equals(username)) {
+                return conflict("用户名已存在");
+            }
+        }
+        
+        if (email == null || email.isBlank()) {
+            return badRequest("邮箱不能为空");
+        }
+        if (!Pattern.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$", email)) {
+            return badRequest("邮箱格式不正确");
+        }
+        if (password == null || password.isBlank()) {
+            return badRequest("密码不能为空");
+        }
+        if (!Pattern.matches("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$!%*?&_#^~.,:;\\-+=|\\/\\[\\]{}()<>])[A-Za-z\\d@$!%*?&_#^~.,:;\\-+=|\\/\\[\\]{}()<>]{8,}$", password)) {
+            return badRequest("密码至少8位，且需包含字母、数字及特殊符号");
+        }
+
+        Integer account = generateUniqueAccount();
+        Date date = new Date();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        String nowDay = sdf.format(date);
+
+        Member member = new Member();
+        member.setMemberAccount(account);
+        member.setMemberName(username);
+        member.setMemberPassword(password);
+        member.setCardTime(nowDay);
+        member.setCardClass(0);
+        member.setCardNextClass(0);
+
+        Boolean ok = memberService.registerMember(member);
+        if (ok == null || !ok) {
+            return internalError("注册失败，请稍后重试");
+        }
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("success", true);
+        resp.put("username", username);
+        return ResponseEntity.ok(resp);
     }
 
     @GetMapping("/toAdminMain")
@@ -109,5 +195,42 @@ public class ApiLoginController {
         m.put("success", false);
         m.put("message", message);
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(m);
+    }
+
+    private static ResponseEntity<Map<String, Object>> badRequest(String message) {
+        Map<String, Object> m = new HashMap<>(4);
+        m.put("success", false);
+        m.put("message", message);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(m);
+    }
+
+    private static ResponseEntity<Map<String, Object>> conflict(String message) {
+        Map<String, Object> m = new HashMap<>(4);
+        m.put("success", false);
+        m.put("message", message);
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(m);
+    }
+
+    private static ResponseEntity<Map<String, Object>> internalError(String message) {
+        Map<String, Object> m = new HashMap<>(4);
+        m.put("success", false);
+        m.put("message", message);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(m);
+    }
+
+    private Integer generateUniqueAccount() {
+        Random random = new Random();
+        for (int attempt = 0; attempt < 10; attempt++) {
+            String account = "2021";
+            for (int i = 0; i < 5; i++) {
+                account += random.nextInt(10);
+            }
+            Integer result = Integer.parseInt(account);
+            List<Member> existing = memberService.selectByMemberAccount(result);
+            if (existing == null || existing.isEmpty()) {
+                return result;
+            }
+        }
+        throw new IllegalStateException("无法生成唯一会员账号");
     }
 }

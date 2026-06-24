@@ -28,4 +28,7 @@ public interface MemberService {
     //根据会员账号查询会员
     List<Member> selectByMemberAccount(Integer memberAccount);
 
+    //会员注册
+    Boolean registerMember(Member member);
+
 }

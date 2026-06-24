@@ -16,3 +16,11 @@ mybatis:
 rag:
   api:
     url: "http://localhost:9000"
+
+
+server:
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+      enabled: true

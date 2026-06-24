@@ -1,21 +1,26 @@
 package com.gym.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gym.pojo.ClassOrder;
 import com.gym.pojo.Member;
+import com.gym.service.ChatMemoryService;
 import com.gym.service.ChatService;
 import com.gym.service.ClassOrderService;
+import com.gym.service.MemberService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @RestController
@@ -28,64 +33,156 @@ public class ApiChatController {
     @Autowired
     private ClassOrderService classOrderService;
 
-    @PostMapping("/query")
-    public Map<String,Object> query(
-            @RequestParam("content") String content,
-            @RequestParam(required = false) String model,
-            HttpSession session
-    ){
-        HashMap<String, Object> resp = new HashMap<>();
+    @Autowired
+    private ChatMemoryService chatMemoryService;
+
+    @Autowired
+    private MemberService memberService;
+
+    @Value("${rag.api.url}")
+    private String ragUrl;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    // 创建 RAG 会话
+    @PostMapping("/session/create")
+    public Map<String, Object> createRagSession() {
+        Map<String, Object> resp = new HashMap<>();
         try {
-            Member member = (Member)session.getAttribute("user");
-            String enhancedContent = buildContentWithMemberClasses(content, member);
+            HttpURLConnection conn =
+                    (HttpURLConnection) new URL(ragUrl + "/session/create").openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
+            conn.setDoOutput(true);
+            conn.getOutputStream().write("{}".getBytes(StandardCharsets.UTF_8));
 
-            String reply = chatService.queryChat(enhancedContent, model);
-            resp.put("success",true);
-            resp.put("reply",reply);
+            String result = new BufferedReader(
+                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))
+                    .lines().collect(Collectors.joining());
 
+            JsonNode node = objectMapper.readTree(result);
+            resp.put("success", true);
+            resp.put("sessionId", node.get("session_id").asText());
         } catch (Exception e) {
-            resp.put("success",false);
-            resp.put("message",e.getMessage());
+            resp.put("success", false);
+            resp.put("message", e.getMessage());
         }
         return resp;
     }
 
+    @PostMapping("/query")
+    public Map<String, Object> query(
+            @RequestParam("content") String content,
+            @RequestParam(required = false) String model,
+            HttpSession session
+    ) {
+        HashMap<String, Object> resp = new HashMap<>();
+        try {
+            Member member = (Member) session.getAttribute("user");
+            String enhancedContent = buildContentWithMemberClasses(content, member);
 
-    @GetMapping(value="/stream",produces="text/event-stream")
-    public SseEmitter stream(
-        @RequestParam("content") String content,
-        HttpSession session
-    ){
+            Long sessionId = 1L;
+            chatMemoryService.saveUserMessage(sessionId, content);
 
-    Member member=(Member)session.getAttribute("user");
+            String reply = chatService.queryChat(enhancedContent, model);
+            chatMemoryService.saveAssistantMessage(sessionId, reply);
 
-    String enhancedContent=
-
-            buildContentWithMemberClasses(
-
-                    content,
-
-                    member
-
-            );
-
-    return chatService.streamChat(
-
-            enhancedContent
-
-    );
-
+            resp.put("success", true);
+            resp.put("reply", reply);
+        } catch (Exception e) {
+            resp.put("success", false);
+            resp.put("message", e.getMessage());
+        }
+        return resp;
     }
 
-    // 返回的已经报名的课程 和用户的提问
-    private String buildContentWithMemberClasses(String originalContent,Member member){
-        if (member == null || member.getMemberAccount() == null){
+    @GetMapping(value = "/stream", produces = "text/event-stream;charset=UTF-8")
+    public SseEmitter stream(
+            @RequestParam("content") String content,
+            @RequestParam(required = false) String memberAccount,
+            @RequestParam(required = false) String ragSessionId,
+            HttpSession session
+    ) {
+        // 获取用户信息
+        Member member = (Member) session.getAttribute("user");
+        if (member == null && memberAccount != null) {
+            try {
+                List<Member> members = memberService.selectByMemberAccount(Integer.parseInt(memberAccount));
+                if (members != null && !members.isEmpty()) {
+                    member = members.get(0);
+                }
+            } catch (NumberFormatException e) {
+                // 忽略
+            }
+        }
+
+        Long sessionId = 1L;
+
+        // 存用户消息
+        chatMemoryService.saveUserMessage(sessionId, content);
+
+        // 拼课程上下文
+        final String finalContent = buildContentWithMemberClasses(content, member);
+        final String finalRagSessionId = (ragSessionId != null && !ragSessionId.isEmpty())
+                ? ragSessionId : "default";
+
+        SseEmitter emitter = new SseEmitter(0L);
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                Map<String, Object> body = new HashMap<>();
+                body.put("question", finalContent);
+                body.put("session_id", finalRagSessionId);
+                body.put("n_rounds", 5);
+                String json = objectMapper.writeValueAsString(body);
+
+                HttpURLConnection conn =
+                        (HttpURLConnection) new URL(ragUrl + "/chat/session/stream").openConnection();
+                conn.setRequestMethod("POST");
+                conn.setDoOutput(true);
+                conn.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
+
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(json.getBytes(StandardCharsets.UTF_8));
+                }
+
+                BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
+
+                MediaType utf8Text = MediaType.parseMediaType("text/plain;charset=UTF-8");
+                StringBuilder fullReply = new StringBuilder();
+
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.startsWith("data:")) {
+                        line = line.substring(5).trim();
+                    }
+                    if (!line.isEmpty()) {
+                        fullReply.append(line);
+                        emitter.send(SseEmitter.event().data(line, utf8Text));
+                    }
+                }
+                reader.close();
+
+                // 存 AI 回复
+                chatMemoryService.saveAssistantMessage(sessionId, fullReply.toString());
+                emitter.complete();
+
+            } catch (Exception e) {
+                emitter.completeWithError(e);
+            }
+        });
+
+        return emitter;
+    }
+
+    private String buildContentWithMemberClasses(String originalContent, Member member) {
+        if (member == null || member.getMemberAccount() == null) {
             return originalContent;
         }
 
         List<ClassOrder> classOrders = classOrderService.selectClassOrderByMemberAccount(member.getMemberAccount());
-
-        if (classOrders == null || classOrders.isEmpty()){
+        if (classOrders == null || classOrders.isEmpty()) {
             return originalContent;
         }
 
@@ -102,18 +199,12 @@ public class ApiChatController {
                 member.getMemberName(), member.getMemberAccount());
 
         StringBuilder sb = new StringBuilder();
-        sb.append(originalContent == null ? "":originalContent.trim());
+        sb.append(originalContent == null ? "" : originalContent.trim());
         sb.append("\n\n");
-        sb.append("【系统补充信息】下面是该会员当前已报名的课程信息，请先根据这些信息，明确地告诉用户“我报名了哪些课程”，然后再结合课程安排回答后续问题：\n");
+        sb.append("【系统补充信息】下面是该会员当前已报名的课程信息，请先根据这些信息，明确地告诉用户\"我报名了哪些课程\"，然后再结合课程安排回答后续问题：\n");
         sb.append(memberInfo).append("\n");
         sb.append(classInfo);
 
         return sb.toString();
-
     }
-
-
 }
-
-
-
