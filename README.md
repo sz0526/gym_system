@@ -5,6 +5,7 @@
 - 检索增强生成 ：结合向量数据库与大语言模型，确保回答精准、有据可依
 - 混合检索策略 ：融合关键词检索（BM25）与向量检索，提升召回率
 - 流式响应 ：支持SSE流式输出，实现实时对话体验
+- 多轮上下文记忆：基于会话管理实现多轮对话，AI 可理解上下文连续追问
 - 专业健身知识库 ：内置《现代抗阻训练基础教材》等专业健身资料
 - 易于扩展 ：模块化设计，支持新增知识文档
 ### 🛠️ 技术栈
@@ -35,5 +36,6 @@ uvicorn app.main:app --reload
 
 
 ### 📡 API 接口
-<img width="277" height="100" alt="image" src="https://github.com/user-attachments/assets/baa97012-3ce8-4d57-9874-34be530c82cc" />
+<img width="372" height="202" alt="image" src="https://github.com/user-attachments/assets/f3a20445-7faf-4f6d-ba7a-5995ee4dea1f" />
+
 
