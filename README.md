@@ -1,13 +1,15 @@
-## Fitness-RAG - 智能健身AI助手
-基于检索增强生成（RAG）技术的智能健身AI助手，为用户提供专业、准确的健身指导。
+## Fitness AI Assistant (RAG + Agent) - 智能健身AI助手
+基于 SpringBoot + FastAPI + LangChain + LangGraph 构建的智能健身助手。
+
+项目融合 RAG 知识库、Hybrid Retrieval、LangGraph ReAct Agent、Tool Calling 与 MCP 工具服务，实现健身知识问答、课程查询、健身房信息查询、多轮对话记忆及流式 AI 交互。
 
 ### 🌟 项目亮点
-- 检索增强生成 ：结合向量数据库与大语言模型，确保回答精准、有据可依
-- 混合检索策略 ：融合关键词检索（BM25）与向量检索，提升召回率
-- 流式响应 ：支持SSE流式输出，实现实时对话体验
-- 多轮上下文记忆：基于会话管理实现多轮对话，AI 可理解上下文连续追问
-- 专业健身知识库 ：内置《现代抗阻训练基础教材》等专业健身资料
-- 易于扩展 ：模块化设计，支持新增知识文档
+RAG 知识增强问答：基于 LangChain + Chroma VectorDB 构建健身知识库，实现检索增强生成（RAG），提升专业健身问答准确率。
+Hybrid 混合检索：融合 BM25 关键词检索与向量检索，通过 Hybrid Retriever 提升复杂问题召回率与回答准确率。
+LangGraph ReAct Agent：基于 LangGraph 构建 Agent 工作流，实现 LLM → Tool → LLM 推理闭环；支持课程查询、健身房信息查询等业务 Tool Calling。
+MCP 工具服务：基于 Model Context Protocol（MCP）封装课程查询、健身房信息等业务接口，构建标准 MCP Server，实现工具统一注册与调用。
+流式 AI 对话：基于 DashScope Stream API、FastAPI SSE 与 SpringBoot SseEmitter 实现 Token 级流式输出，支持实时对话体验。
+多轮上下文记忆：基于 Session 机制维护用户上下文记忆，对话历史持久化至 MySQL，实现跨轮次上下文感知问答与历史追溯。
 ### 🛠️ 技术栈
 <img width="276" height="264" alt="image" src="https://github.com/user-attachments/assets/4d6b657d-8b56-4549-94c7-632b90c5428c" />
 
