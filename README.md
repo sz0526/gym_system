@@ -3,54 +3,8 @@
 
 项目融合 RAG 知识库、Hybrid Retrieval、LangGraph ReAct Agent、Tool Calling 与 MCP 工具服务，实现健身知识问答、课程查询、健身房信息查询、多轮对话记忆及流式 AI 交互。
 
-### 系统结构
-```mermaid
-graph TD
-    %% 样式定义
-    classDef main fill:#1f2937,stroke:#3b82f6,stroke-width:2px,color:#fff;
-    classDef rag fill:#111827,stroke:#10b981,stroke-width:2px,color:#fff;
-    classDef front fill:#111827,stroke:#ec4899,stroke-width:2px,color:#fff;
-    classDef back fill:#111827,stroke:#f59e0b,stroke-width:2px,color:#fff;
-    classDef db fill:#374151,stroke:#6b7280,stroke-width:1px,color:#e5e7eb;
 
-    %% 根节点
-    ROOT[gym_system 项目总根目录] ::: main
 
-    %% 核心三模块
-    ROOT --> FR[Fitness-RAG <br>AI/RAG核心模块] ::: rag
-    ROOT --> FT[frontend <br>Vue3 前端模块] ::: front
-    ROOT --> GMS[gym-management-system <br>Spring Boot 后端模块] ::: back
-
-    %% RAG内部细分
-    subgraph AI/RAG 服务
-        FR --> FR_APP[app/ <br>Agent工作流与RAG主流程]
-        FR --> FR_DB[chroma_db/ <br>ChromaDB向量数据库]
-        FR --> FR_DATA[data/ <br>健身Markdown/PDF知识库]
-    end
-
-    %% 前端内部细分
-    subgraph Vue3 前端
-        FT --> FT_PAGES[src/pages/ <br>会员/管理员业务页面与AI聊天]
-        FT --> FT_API[src/api/ <br>Axios封装与SSE流式响应客户端]
-        FT --> FT_ROUTER[src/router/ <br>路由及双套权限体系校验]
-    end
-
-    %% 后端内部细分
-    subgraph Spring Boot 后端
-        GMS --> GMS_CTRL[controller/ <br>RESTful API控制器层]
-        GMS --> GMS_SVC[service/ <br>核心业务逻辑与AI聊天对接服务]
-        GMS --> GMS_MAP[mapper/ & pojo/ <br>MyBatis持久层与实体数据模型]
-        GMS --> GMS_SEC[security/ & config/ <br>Session认证拦截器与MVC跨域配置]
-    end
-
-    %% 数据持久化层
-    FR_DB --> MYSQL[(MySQL 8.0 <br>业务数据与会话消息)] ::: db
-    GMS_MAP --> MYSQL
-
-    %% 核心数据/通信流向控制（虚线表示交互）
-    FT_PAGES -. 请求交互 .-> GMS_CTRL
-    GMS_CTRL -. 内部调用 .-> GMS_SVC
-    GMS_SVC -. HTTP/SSE流式对接 .-> FR_APP
 
 ### 🌟 项目亮点
 RAG 知识增强问答：基于 LangChain + Chroma VectorDB 构建健身知识库，实现检索增强生成（RAG），提升专业健身问答准确率。
