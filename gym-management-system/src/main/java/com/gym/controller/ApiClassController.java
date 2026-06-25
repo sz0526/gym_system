@@ -6,10 +6,7 @@ import com.gym.service.ClassOrderService;
 import com.gym.service.ClassTableService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.List;
@@ -46,6 +43,38 @@ public class ApiClassController {
     public Map<String, Object> toAddClass() {
         Map<String, Object> resp = new HashMap<>();
         resp.put("success", true);
+        return resp;
+    }
+
+    // 按会员账号查询已报名课程（给 AI 工具调用）
+    @GetMapping("/getClassByMember")
+    public Map<String, Object> getClassByMember(@RequestParam String memberAccount) {
+        Map<String, Object> resp = new HashMap<>();
+        try {
+            List<ClassOrder> orders = classOrderService.selectClassOrderByMemberAccount(
+                    Integer.parseInt(memberAccount)
+            );
+            resp.put("success", true);
+            resp.put("orders", orders);
+        } catch (Exception e) {
+            resp.put("success", false);
+            resp.put("message", e.getMessage());
+        }
+        return resp;
+    }
+
+    // 查询所有课程表（给 AI 工具调用）
+    @GetMapping("/getAllClass")
+    public Map<String, Object> getAllClass() {
+        Map<String, Object> resp = new HashMap<>();
+        try {
+            List<ClassTable> classList = classTableService.findAll();
+            resp.put("success", true);
+            resp.put("classList", classList);
+        } catch (Exception e) {
+            resp.put("success", false);
+            resp.put("message", e.getMessage());
+        }
         return resp;
     }
 

@@ -176,6 +176,76 @@ public class ApiChatController {
         return emitter;
     }
 
+    @GetMapping(value = "/agent/stream", produces = "text/event-stream;charset=UTF-8")
+    public SseEmitter agentStream(
+            @RequestParam("content") String content,
+            @RequestParam(required = false) String memberAccount,
+            HttpSession session
+    ) {
+        Member member = (Member) session.getAttribute("user");
+        if (member == null && memberAccount != null) {
+            try {
+                List<Member> members = memberService.selectByMemberAccount(Integer.parseInt(memberAccount));
+                if (members != null && !members.isEmpty()) {
+                    member = members.get(0);
+                }
+            } catch (NumberFormatException e) {
+                // 忽略
+            }
+        }
+
+        Long sessionId = 1L;
+        chatMemoryService.saveUserMessage(sessionId, content);
+
+        final String finalMemberAccount = (member != null && member.getMemberAccount() != null)
+                ? member.getMemberAccount().toString() : "";
+        final String finalContent = content;
+
+        SseEmitter emitter = new SseEmitter(0L);
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                Map<String, Object> body = new HashMap<>();
+                body.put("question", finalContent);
+                body.put("member_account", finalMemberAccount);
+                String json = objectMapper.writeValueAsString(body);
+
+                HttpURLConnection conn =
+                        (HttpURLConnection) new URL(ragUrl + "/agent/chat").openConnection();
+                conn.setRequestMethod("POST");
+                conn.setDoOutput(true);
+                conn.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
+
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(json.getBytes(StandardCharsets.UTF_8));
+                }
+
+                // 读取普通 JSON 回复
+                String result = new BufferedReader(
+                        new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))
+                        .lines().collect(Collectors.joining());
+
+                JsonNode node = objectMapper.readTree(result);
+                String answer = node.get("answer").asText();
+
+                // 模拟流式输出，按字符发送
+                MediaType utf8Text = MediaType.parseMediaType("text/plain;charset=UTF-8");
+                for (String chunk : answer.split("(?<=\\G.{5})")) {
+                    emitter.send(SseEmitter.event().data(chunk, utf8Text));
+                    Thread.sleep(30);
+                }
+
+                chatMemoryService.saveAssistantMessage(sessionId, answer);
+                emitter.complete();
+
+            } catch (Exception e) {
+                emitter.completeWithError(e);
+            }
+        });
+
+        return emitter;
+    }
+
     private String buildContentWithMemberClasses(String originalContent, Member member) {
         if (member == null || member.getMemberAccount() == null) {
             return originalContent;

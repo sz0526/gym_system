@@ -1,7 +1,6 @@
 from langchain_chroma import Chroma
 from app.embedding import LocalServiceEmbeddings
 from langchain_community.retrievers import BM25Retriever
-from langchain.retrievers import EnsembleRetriever
 
 def get_base_vector_store():
     """基础函数：连接本地已有的 Chroma 数据库"""
@@ -45,37 +44,45 @@ def get_mmr_retriever(k: int = 3, fetch_k: int = 10):
 # ==================== 3. Hybrid 混合检索器 ====================
 def get_hybrid_retriever(k: int = 3):
     """
-    企业级混合检索器：50% 关键词检索 (BM25) + 50% 向量检索 (Chroma)
+    手动实现混合检索：50% BM25 + 50% 向量检索，去重合并
     """
     db = get_base_vector_store()
-    
-    # 路 A：向量检索器
     vector_retriever = db.as_retriever(search_kwargs={"k": k})
-    
-    # 路 B：关键词检索器（需要从现有的数据库里抽出所有的文本来建立关键词树）
+
     db_data = db.get()
     all_texts = db_data.get("documents", [])
     all_metadatas = db_data.get("metadatas", [])
-    
+
     if not all_texts:
         raise Exception("❌ 数据库是空的，请先运行 vector_store.py 导入数据！")
-        
-    # 把文本包装成 LangChain 的 Document 格式
+
     from langchain_core.documents import Document
     docs = [
-        Document(page_content=t, metadata=m) 
+        Document(page_content=t, metadata=m)
         for t, m in zip(all_texts, all_metadatas)
     ]
-    
+
     bm25_retriever = BM25Retriever.from_documents(docs)
-    bm25_retriever.k = k  # 设置关键词检索也返回 k 个
-    
-    # 合并两路：使用 EnsembleRetriever
-    hybrid_retriever = EnsembleRetriever(
-        retrievers=[bm25_retriever, vector_retriever],
-        weights=[0.5, 0.5]  # 权重平分
-    )
-    return hybrid_retriever
+    bm25_retriever.k = k
+
+    # 手动合并两路结果，去重
+    class ManualHybridRetriever:
+        def invoke(self, query: str):
+            bm25_docs = bm25_retriever.invoke(query)
+            vector_docs = vector_retriever.invoke(query)
+
+            seen = set()
+            merged = []
+            for doc in bm25_docs + vector_docs:
+                key = doc.page_content[:50]
+                if key not in seen:
+                    seen.add(key)
+                    merged.append(doc)
+                if len(merged) >= k * 2:
+                    break
+            return merged
+
+    return ManualHybridRetriever()
 
 # ==================== 本章实战测试入口 ====================
 if __name__ == "__main__":

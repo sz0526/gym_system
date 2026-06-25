@@ -1,6 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
+from app.agent import run_agent
+
 from app.rag import (
     rag_pipeline_stream,
     rag_pipeline,
@@ -36,6 +38,11 @@ class HistoryResponse(BaseModel):
     session_id: str
     messages: list
     total_rounds: int
+
+
+class AgentRequest(BaseModel):
+    question: str
+    member_account: str = ""
 
 
 # ==========================
@@ -132,3 +139,9 @@ def chat_stream_with_session(req: SessionChatRequest):
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    
+
+@app.post("/agent/chat")
+def agent_chat(req: AgentRequest):
+    answer = run_agent(req.question, req.member_account)
+    return {"answer": answer}

@@ -26,6 +26,10 @@
           @keydown.enter.exact.prevent="send()"
         />
         <div class="chat-actions">
+          <el-radio-group v-model="chatMode" size="small">
+            <el-radio-button label="rag">知识问答</el-radio-button>
+            <el-radio-button label="agent">智能助手</el-radio-button>
+          </el-radio-group>
           <el-button :disabled="isSending || !draft.trim()" type="primary" @click="send()">
             {{ isSending ? '发送中…' : '发送' }}
           </el-button>
@@ -52,6 +56,8 @@ const draft = ref('')
 const isSending = ref(false)
 const scrollbarRef = ref<any>(null)
 const ragSessionId = ref('')
+const chatMode = ref<'rag' | 'agent'>('rag')
+
 const messages = ref<ChatMessage[]>([
   {
     id: crypto.randomUUID(),
@@ -61,7 +67,6 @@ const messages = ref<ChatMessage[]>([
   }
 ])
 
-// 进入页面时创建 RAG 会话
 onMounted(async () => {
   try {
     const res = await axios.post('/api/chat/session/create')
@@ -111,12 +116,13 @@ async function send() {
   await scrollToBottom()
 
   const memberAccount = localStorage.getItem('memberAccount') ?? ''
-  const params = new URLSearchParams({
-    content,
-    memberAccount,
-    ragSessionId: ragSessionId.value
-  })
-  const source = new EventSource(`/api/chat/stream?${params.toString()}`)
+
+  // 根据模式选择不同接口
+  const apiPath = chatMode.value === 'agent'
+    ? `/api/chat/agent/stream?${new URLSearchParams({ content, memberAccount }).toString()}`
+    : `/api/chat/stream?${new URLSearchParams({ content, memberAccount, ragSessionId: ragSessionId.value }).toString()}`
+
+  const source = new EventSource(apiPath)
 
   source.onmessage = (event) => {
     if (event.data === '[DONE]') {
@@ -241,5 +247,6 @@ function clearChat() {
   display: flex;
   gap: 10px;
   justify-content: flex-end;
+  align-items: center;
 }
 </style>
